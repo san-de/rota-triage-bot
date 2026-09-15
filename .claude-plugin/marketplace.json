@@ -1,0 +1,21 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "rota-triage-bot",
+  "description": "REMEX rota-triage: unattended Slack alert triage (tag → Kibana → GitHub → thread + team channel reply), multi-team, hosted on Agent1.",
+  "owner": { "name": "REMEX backend team", "email": "team.remex@auto1.com" },
+  "metadata": {
+    "description": "Install locally with: claude plugin marketplace add <path-or-url of this repo>; the Agent1 scheduled task reads the same files from a clone of this repo.",
+    "version": "2.0.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "rota-triage",
+      "source": "./plugins/rota-triage",
+      "description": "Finds Slack messages that tag a configured user group in configured channels, resolves the Kibana link, analyses the logs (Kibana agents + deterministic search), locates the failing code in the owning wkda repo, and posts the analysis in the alert thread and the team channel. Usage- /rota-triage:rota-triage poll --monitor <team> [--dry-run] | --since 3d | <slack-permalink>",
+      "version": "2.0.0",
+      "category": "operations",
+      "author": { "name": "REMEX backend team", "email": "team.remex@auto1.com" }
+    }
+  ]
+}

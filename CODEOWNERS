@@ -1,0 +1,3 @@
+# REMEX backend owns the bot; team config files are reviewed by the owning team
+*                                                   @wkda/remex-be
+/plugins/rota-triage/config/monitors/remex.json     @wkda/remex-be

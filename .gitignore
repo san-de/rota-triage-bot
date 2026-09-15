@@ -1,0 +1,13 @@
+# state never lives in the repo (see AGENTS.md)
+ledger.json
+services.local.json
+# local secrets
+.env
+.env.*
+keys.json
+# misc
+.DS_Store
+.in_use/
+__pycache__/
+*.pyc
+node_modules/
