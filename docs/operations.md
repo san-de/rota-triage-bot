@@ -1,7 +1,24 @@
 # Operations runbook
 
 All commands run from the repo root. `AGENT1_API_KEY` is the operator's personal Agent1 key (`cci_production_…`); it is read
-from the environment only and never printed.
+from the environment only and never printed. Without a key, every call below also works from a logged-in browser tab on
+agent1.prod.apps.auto1.team with `fetch('/api/…', {credentials:'include'})` (that is how the REMEX pilot was set up).
+
+## REMEX pilot objects (2026-09-17)
+
+| Object | Id |
+|---|---|
+| Agent `remex-rota-triage` (private; github + atlassian + slack MCP, kibana plugin, opus) | `bba04586-6738-43fd-accf-63d49265be29` |
+| Scheduled task `rota-triage · remex (hourly, dry-run)`, cron `0 * * * *` Europe/Berlin, `--dry-run` | `0fdff578-79fa-4c0f-9a6b-be218d781d4b` |
+| One-off dry-run tasks (`--since 3d --dry-run`) | `94337fc5-…`, `44ca2668-…` (awaiting review, keep as reference) |
+| REMEX dev board (task moves there once the agent is public) | `7c0842d9-8a01-4e69-a046-70d46a43a2a2` |
+
+Worker facts learned: no `gh` (the GitHub MCP rung is used), Kibana key file at `/home/node/.config/auto1-kibana/keys.json`
+(written from Integrations → Elastic API Key), the Kibana App-Debugging agent tool stays paused until the key owner runs
+`/kibana:setup` once in an Agent1 session with the kibana plugin, the repo must be reachable by the worker's GitHub
+credential proxy (public or in `wkda`), and a run with candidates costs ≈ $5 and takes ≈ 12 min.
+
+Go-live = create a second task without `--dry-run` (same description otherwise), schedule it, then `disable` the dry-run task.
 
 ## See what the bot did
 

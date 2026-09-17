@@ -36,7 +36,7 @@
   },
   "github": { "orgs": ["wkda"], "cloneDepth": 200, "localRepoRoots": [] },
   "services": { "file": "config/services.json", "overlay": "services.local.json" },
-  "poll": { "sinceFallbackMinutes": 120, "firstRunLookbackHours": 2, "searchLagMinutes": 10, "maxPerRun": 5, "maxPerRunBeforeNumbering": 5 },
+  "poll": { "cron": "0 * * * *", "sinceFallbackMinutes": 75, "firstRunLookbackHours": 1, "searchLagMinutes": 10, "maxPerRun": 5, "maxPerRunBeforeNumbering": 5 },
   "skip": { "olderThanHours": 48, "nonAlertMentions": true, "alertCodes": [] },
   "knownNoise": [],
   "jira": {

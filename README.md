@@ -3,10 +3,12 @@
 Unattended Slack alert triage for AUTO1 teams. When someone tags a team's user group in a configured channel (for
 REMEX: `@remex-be` in `#bot_rota`), the bot reads the alert thread, resolves the Kibana link, analyses the logs, locates the
 failing code in the owning `wkda` repo, classifies the alert and posts the analysis **in the alert thread** and **in the
-team's channel** (optional DMs). It runs every 10 minutes as an **Agent1 scheduled task**, one task per team.
+team's channel** (optional DMs). It runs on a cron schedule (REMEX: hourly, `poll.cron` in the team config) as an
+**Agent1 scheduled task**, one task per team; each run covers everything since the previous run's watermark, with a
+`poll.sinceFallbackMinutes` overlap for Slack indexing lag (REMEX: 75 min). A run with candidates costs ≈ $5 on Agent1.
 
 ```
-Slack channel ──► Agent1 task (every 10 min, team-owned agent + board)
+Slack channel ──► Agent1 task (hourly cron, team-owned agent + board)
                   ├─ scripts decide: which messages are real tags, what is new, what is already answered
                   ├─ Kibana: plugin agent + deterministic log search        (team member's Kibana key)
                   ├─ GitHub: owning repo, failing frame, config value        (team member's GitHub token)

@@ -2,7 +2,7 @@
 # Create / manage the Agent1 scheduled task that runs rota-triage for one team monitor.
 #
 #   AGENT1_API_KEY=cci_production_… scripts/agent1-bootstrap.sh create --monitor remex --repo https://github.com/wkda/rota-triage-bot \
-#       [--branch main] [--agent-id <id>] [--board-id <id>] [--cron "*/10 * * * *"] [--timezone Europe/Berlin] \
+#       [--branch main] [--agent-id <id>] [--board-id <id>] [--cron "0 * * * *"] [--timezone Europe/Berlin] \
 #       [--extra-args "--since 3d --dry-run"] [--run-now] [--base https://agent1.prod.apps.auto1.team]
 #   scripts/agent1-bootstrap.sh status  <taskId>
 #   scripts/agent1-bootstrap.sh disable <taskId>      # pause the schedule
@@ -21,7 +21,7 @@ TEMPLATE="$REPO_ROOT/docs/agent1-task-description.md"
 
 cmd="${1:-}"; shift || true
 BASE="${AGENT1_BASE_URL:-https://agent1.prod.apps.auto1.team}"
-MONITOR=""; REPO=""; BRANCH="main"; AGENT_ID=""; BOARD_ID=""; CRON="*/10 * * * *"; TZ_NAME="Europe/Berlin"; EXTRA=""; RUN_NOW=0; TASK_ID=""
+MONITOR=""; REPO=""; BRANCH="main"; AGENT_ID=""; BOARD_ID=""; CRON=""; TZ_NAME="Europe/Berlin"; EXTRA=""; RUN_NOW=0; TASK_ID=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --monitor) MONITOR="$2"; shift 2;;
@@ -67,6 +67,7 @@ case "$cmd" in
     [ -f "$TEMPLATE" ] || { echo "missing template $TEMPLATE" >&2; exit 2; }
     node "$HERE/monitor.js" validate --monitor "$MONITOR" >/dev/null || { echo "monitor config invalid — fix it first (node scripts/monitor.js validate --monitor $MONITOR)" >&2; exit 2; }
     cfg="$(node "$HERE/monitor.js" resolve --monitor "$MONITOR")"
+    [ -n "$CRON" ] || CRON="$(printf '%s' "$cfg" | json_get poll.cron)"; [ -n "$CRON" ] || CRON="0 * * * *"
     [ -n "$AGENT_ID" ] || AGENT_ID="$(printf '%s' "$cfg" | json_get agent1.agentId)"
     [ -n "$BOARD_ID" ] || BOARD_ID="$(printf '%s' "$cfg" | json_get agent1.boardId)"
     [ -n "$AGENT_ID" ] && [ -n "$BOARD_ID" ] || { echo "agent1.agentId and agent1.boardId are required (team-owned agent and board → per-team accounting)" >&2; exit 2; }
