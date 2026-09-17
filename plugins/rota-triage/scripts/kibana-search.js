@@ -11,13 +11,15 @@
 //   node kibana-search.js --key-check [--env prod]        # where would the key come from? prints source env|file|none, exit 0/2
 // Key: ELASTIC_API_KEY_<ENV> from the environment, else the kibana plugin's keys file (ELASTIC_API_KEY_FILE or
 // ~/.config/auto1-kibana/keys.json) — never printed. Optional KIBANA_URL (default prod).
+// Index: default "*logs-auto1.services*" (the services' data stream); pass --index "*beat-*" or "*" to widen. Output carries
+// partial:true + warning when ES timed out or shards failed — treat total 0 with partial:true as "unknown", not "none".
 // Output: JSON summary { total, distinctTraces, perDay, services, hits:[{ts, level, logger, traceId, errorId, message, exception, appFrames, causes, threadHints, index}] }.
 "use strict";
 const https = require("https");
 const { resolveElasticKey, kibanaBaseUrl, describe } = require("./lib/elastic-key.js");
 
 const args = process.argv.slice(2);
-const opt = { days: 10, size: 3, index: "*", levels: null, keyCheck: false };
+const opt = { days: 10, size: 3, index: "*logs-auto1.services*", levels: null, keyCheck: false };
 for (let i = 0; i < args.length; i++) {
   const a = args[i], v = args[i + 1];
   if (a === "--service") opt.service = v, i++;
@@ -78,7 +80,14 @@ const req = https.request(u, {
     const r = JSON.parse(data).rawResponse || {};
     const aggs = r.aggregations || {};
     const appFrame = /\b(wkda|com\.auto1)\./;
+    // A wide index pattern over many days can time out or fail shards and ES still answers 200 with hits.total 0.
+    // Surface that so a "0" is never mistaken for "no logs" (seen 2026-09-17: 14-day error.id scan over "*" → 0, 3-day → 4).
+    const shards = r._shards || {};
+    const partial = Boolean(r.timed_out) || (shards.failed || 0) > 0;
     const out = {
+      partial,
+      warning: partial ? `partial result (timed_out=${!!r.timed_out}, failed shards=${shards.failed || 0}/${shards.total || "?"}) — retry with --index "*logs-auto1.services*" or fewer --days` : undefined,
+      shardFailure: partial && Array.isArray(shards.failures) && shards.failures[0] ? String((shards.failures[0].reason || {}).reason || shards.failures[0].reason || "").slice(0, 200) : undefined,
       total: (r.hits && r.hits.total && (r.hits.total.value !== undefined ? r.hits.total.value : r.hits.total)) || 0,
       distinctTraces: aggs.traces && aggs.traces.value,
       perDay: ((aggs.per_day || {}).buckets || []).map(b => [b.key_as_string.slice(0, 10), b.doc_count]),

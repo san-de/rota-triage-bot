@@ -1,5 +1,5 @@
 {
-  "_comment": "service.name (as seen in Kibana / 'Detected for') \u2192 repo. localPath is optional and relative to github.localRepoRoots. knownNoise lists error signatures that are chronic baseline, not findings. Resolve once, cache forever: when the skill discovers a new mapping it writes it here. knownIssues[] records already-analysed error.id/exception signatures with the ticket that owns them.",
+  "_comment": "service.name (as seen in Kibana / 'Detected for') → repo. localPath is optional and relative to github.localRepoRoots. knownNoise lists error signatures that are chronic baseline, not findings. Resolve once, cache forever: when the skill discovers a new mapping it writes it here. knownIssues[] records already-analysed error.id/exception signatures with the ticket that owns them.",
   "services": {
     "zrt-admin-dashboard": {
       "repo": "wkda/zrt-admin-dashboard-service",
@@ -37,6 +37,14 @@
           "summary": "Secondary symptom of a /v2/margins/batch timeout: async pipeline's risky-leads Feign call runs after Jetty recycled the request; defect is in core-security-web (no guard). Same error.id on logistics-route Jun 2026 (LOG-11654).",
           "firstSeen": "2026-08-29",
           "analysedOn": "2026-09-07",
+          "ticket": null
+        },
+        {
+          "errorId": "fdd58556",
+          "exception": "SQLTransientConnectionException: dataSource - Connection is not available, request timed out after 30000ms (total=10, active=10)",
+          "summary": "HikariCP pool exhausted for ~1 min on 2026-09-16 11:01 CEST (230 lines, 0 before in 14 d). Pool reports total=10 while prod config sets hikari.maximum-pool-size 15 — verify the property is applied. Fired SRE0077 + SRE0053 together.",
+          "firstSeen": "2026-09-16",
+          "analysedOn": "2026-09-17",
           "ticket": null
         }
       ]
@@ -79,7 +87,17 @@
     "remarketing-document-reconciliation": {
       "repo": "wkda/remarketing-document-reconciliation-service",
       "localPath": "remarketing-document-reconciliation-service",
-      "knownNoise": []
+      "knownNoise": [],
+      "knownIssues": [
+        {
+          "errorId": "11af7d93",
+          "exception": "NullPointerException: Boolean.booleanValue() on AIComparisonFieldFeedbackResponse.getHasIssue() at DocumentReconciliationConverter.convert:24",
+          "summary": "AI comparison verdict without hasIssue unboxed into the entity's primitive boolean; the whole feedback request fails with 500. Fix in PR #74 (REMEX-2927), merge + deploy pending as of 2026-09-17.",
+          "firstSeen": "2026-09-14",
+          "analysedOn": "2026-09-17",
+          "ticket": "REMEX-2927"
+        }
+      ]
     },
     "car-details": {
       "repo": "wkda/car-details-service",

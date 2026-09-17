@@ -69,7 +69,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/kibana-search.js" --env <kibana.env> --servi
 node "${CLAUDE_PLUGIN_ROOT}/scripts/kibana-search.js" --env <kibana.env> --service <service> --trace-id <trace.id>
 ```
 
-`perDay` shows recurrence (a 14-day daily pattern is a different story from a spike), `exception`/`appFrames`/`causes` give the signature and the frame even when `error.type` is unset (the agent then reports 0), `threadHints` tell you SQS listener vs HTTP thread. The agent remains the source for counts and the trace story; the script is the source for *what* and *since when*. `error.id` is a hash of the exception line and recurs across unrelated services.
+`perDay` shows recurrence (a 14-day daily pattern is a different story from a spike), `exception`/`appFrames`/`causes` give the signature and the frame even when `error.type` is unset (the agent then reports 0), `threadHints` tell you SQS listener vs HTTP thread. `partial: true` (timed out or failed shards) means the numbers are unknown, not zero: re-run with fewer `--days` or the default index before concluding anything; a `total: 0` without `partial` is a real zero. The agent remains the source for counts and the trace story; the script is the source for *what* and *since when*. `error.id` is a hash of the exception line and recurs across unrelated services.
 
 Output per alert: ERROR count in window and previous window; top signature (class, message ≤ 120, top app frame, logger, first/last seen, count, one `trace.id`); the request story (endpoint → downstream → status in ms); recurrence; optional perf numbers.
 
