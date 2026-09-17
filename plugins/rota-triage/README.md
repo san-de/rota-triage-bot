@@ -6,7 +6,7 @@ The skill and its helpers. Start with the repository README for the overall pict
   `slack-scan.js`) · 2 alert context + Kibana links · 3 Kibana analysis (+ 3b deterministic lookup) · 4 code location
   (MVP scope) · 5 post, then ledger.
 - `skills/rota-triage/references/` — `kibana-links.md` (three link shapes), `analysis-questions.md` (Kibana agent questions),
-  `thread-reply-template.md`, `team-channel-template.md`, `dm-template.md`.
+  `thread-reply-template.md`, `team-channel-template.md`, `dm-template.md`, `jira-ticket-template.md` (Phase 6, gated by `jira.enabled`).
 - `config/monitors/<team>.json` — one file per team; `_example.json` is the template. `config/services.json` maps
   `service.name` → repo (+ `knownNoise`, `knownIssues`).
 - `scripts/monitor.js` — `list | resolve --monitor <team> | validate` (merged config, runtime mode, state paths, Kibana key source).

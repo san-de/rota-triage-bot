@@ -5,8 +5,8 @@
   "enabled": true,
   "owner": { "name": "ashish.ranjan", "slackUserId": "U0B4N3ZPRFE" },
   "agent1": {
-    "agentId": "REPLACE_WITH_REMEX_AGENT_ID",
-    "boardId": "REPLACE_WITH_REMEX_BOARD_ID",
+    "agentId": "bba04586-6738-43fd-accf-63d49265be29",
+    "boardId": "7c0842d9-8a01-4e69-a046-70d46a43a2a2",
     "keyOwner": "ashish.ranjan"
   },
   "slack": {
@@ -37,5 +37,15 @@
   "services": { "file": "config/services.json", "overlay": "services.local.json" },
   "poll": { "sinceFallbackMinutes": 120, "firstRunLookbackHours": 2, "searchLagMinutes": 10, "maxPerRun": 5, "maxPerRunBeforeNumbering": 5 },
   "skip": { "olderThanHours": 48, "nonAlertMentions": true, "alertCodes": [] },
-  "knownNoise": []
+  "knownNoise": [],
+  "jira": {
+    "enabled": false,
+    "siteUrl": "https://wkdauto.atlassian.net",
+    "project": "REMEX",
+    "epics": { "bug": "REMEX-2957", "tech-improvement": "REMEX-2956" },
+    "issueTypes": { "bug": "Bug", "tech-improvement": "Task" },
+    "labels": ["agent-one", "rota-triage"],
+    "createFor": ["new after deploy", "pre-existing, grew", "infra", "upstream dependency"],
+    "board": { "id": "7c0842d9-8a01-4e69-a046-70d46a43a2a2", "syncRule": "REMEX agent-one" }
+  }
 }

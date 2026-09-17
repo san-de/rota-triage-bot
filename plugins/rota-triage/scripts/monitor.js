@@ -115,6 +115,15 @@ function validate(team) {
   const k = cfg.kibana || {};
   req(["prod", "qa"].includes(k.env || "prod"), "kibana.env must be prod or qa");
   warn(!k.askTool || !k.askTool.startsWith("mcp__"), "kibana.askTool should be a tool-name suffix (ask_app_debugging), not a full mcp__ name");
+  const j = cfg.jira;
+  if (j && j.enabled) {
+    const KEY = /^[A-Z][A-Z0-9]+-\d+$/;
+    req(typeof j.project === "string" && /^[A-Z][A-Z0-9]+$/.test(j.project), "jira.project must be a Jira project key when jira.enabled");
+    req(j.epics && KEY.test(j.epics.bug || "") && KEY.test(j.epics["tech-improvement"] || ""), "jira.epics.bug and jira.epics.tech-improvement must be issue keys (PROJ-123) when jira.enabled");
+    req(Array.isArray(j.labels) && j.labels.includes("agent-one"), "jira.labels must include agent-one (the board sync rule picks tickets up by that label)");
+    req(Array.isArray(j.createFor) && j.createFor.length > 0, "jira.createFor must list at least one classification");
+    warn(/^https:\/\/[a-z0-9.-]+\.atlassian\.net$/.test(j.siteUrl || ""), "jira.siteUrl should be the https://<site>.atlassian.net base URL");
+  }
   return { team: cfg.team, file: cfg._file, ok: errors.length === 0, errors, warnings };
 }
 

@@ -61,7 +61,14 @@ docs/agent1-task-description.md                          the prompt the Agent1 t
 docs/operations.md · docs/later-phases.md                runbook · parked scope (Jira, deeper code lookup, n8n shell)
 ```
 
+## Phase 6 — Jira handoff to the Agent1 board (scaffolded, off by default)
+
+When `jira.enabled` is true in the team config, every posted analysis whose classification is in `jira.createFor` also
+becomes a Jira ticket under the team's epic (`bug` → bugs epic as `Bug`; `tech-improvement` → tech-improvement epic as
+`Task`), labelled `agent-one` so the team's Agent1 board sync rule imports it and the board workflow turns it into a PR.
+Template and mapping: `plugins/rota-triage/skills/rota-triage/references/jira-ticket-template.md`; rollout steps:
+`docs/later-phases.md`. REMEX: epics REMEX-2957 (Bugs Q3-2026) and REMEX-2956 (Tech Improvement Q3-2026).
+
 ## Not in this phase
 
-Jira ticket creation, release-diff/open-PR lookup, a bot identity (dedicated Slack app), event-driven triggering. See
-`docs/later-phases.md`.
+Release-diff/open-PR lookup, a bot identity (dedicated Slack app), event-driven triggering. See `docs/later-phases.md`.

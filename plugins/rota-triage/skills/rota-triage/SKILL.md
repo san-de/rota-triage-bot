@@ -94,11 +94,23 @@ For each candidate, oldest first:
 6. `ledger.js advance <ts>`; next candidate. When more than `poll.maxPerRunBeforeNumbering` alerts are posted in one run, prefix the team posts with `(k/n)`.
 7. End of run: `ledger.js run-note --monitor <team> --json '{"candidates":n,"posted":n,"teamOnly":n,"skipped":n,"failed":n,"durationSec":s,"gaps":"…"}'`. If it reports `lastSuccessfulRunAt` older than 2 hours, post the health line from `team-channel-template.md`. Terminal summary: one line per candidate (`posted|team-only|dry-run|skipped|failed <permalink> <service> <classification>`), then `watermark <ts> (<local time>) · ledger <path>`. On Agent1 also append one line to `/app/task-context/memory.md`.
 
+## Phase 6 — Jira handoff (only when `jira.enabled` is true; skip silently otherwise)
+
+Runs per candidate right after Phase 5 step 4 succeeded (thread reply **and** team post sent, not dry run, not team-only).
+Follow `references/jira-ticket-template.md`: kind from the classification (`bug` → `jira.epics.bug`, `tech-improvement`
+→ `jira.epics["tech-improvement"]`, none for `expected business validation` / `steady noise` / anything not in
+`jira.createFor`); dedupe by JQL first (link instead of create); create with `parent` = the epic and `jira.labels`
+(must contain `agent-one`, which the team's Agent1 board sync rule imports); post the key in the alert thread; mark the
+ledger `{"jira":"<key>","jiraAction":"created|linked"}`. Atlassian MCP tools are resolved by suffix
+(`createJiraIssue`, `searchJiraIssuesUsingJql`); absent → `Gaps: Jira unavailable`, continue. Never transition, assign or
+comment on other tickets.
+
 ### Failure handling
 
 | Situation | Behaviour |
 |---|---|
 | Slack search or send tool missing | Hard stop in Phase 0 with a one-line reason |
+| Jira create fails (Phase 6) | Keep the Slack posts, mark `{"jira":null,"jiraError":"…"}`, continue |
 | Kibana agent absent / erroring twice | Continue with `kibana-search.js`; *Gaps: Kibana agent unavailable* |
 | No Kibana key for the scripts (`elasticKey.source: none`) | Continue with agent answers only; *Gaps: deterministic lookup unavailable* |
 | GitHub ladder exhausted | Post with *Where: not located*; *Gaps: repo lookup unavailable* |
@@ -116,6 +128,6 @@ For each candidate, oldest first:
 
 ## What this skill does NOT do
 
-- No Jira tickets, no reactions, no channel posts outside the configured targets, no drafts.
+- No Jira writes unless `jira.enabled` (Phase 6), no reactions, no channel posts outside the configured targets, no drafts.
 - No live-incident handling — a service-wide spike is named as such in *Read* and the proposal says "escalate".
 - No dashboard or Kibana writes of any kind.

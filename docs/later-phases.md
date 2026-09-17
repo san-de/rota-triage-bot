@@ -1,12 +1,20 @@
 # Later phases (parked, not in the MVP)
 
-## Jira ticket creation
-When the analysis is trusted, create or link a Jira ticket per alert with the full analysis. Reuse
-`wkda/a1-platform-claude-code-plugin` → `skills/slack-alert-triage` (MX-5119): it already dedupes alert signatures against
-existing tickets, keeps a `ticket-cache.json`, and writes `[service] Issue name - actual cause` titles. Integration idea:
-rota-triage produces the analysis and hands `{service, signature, classification, evidence links}` to that skill's ticket
-step; the thread reply then carries the ticket key. Needs: Jira project per team in the monitor config, `acli` or the
-Atlassian MCP on the Agent1 agent.
+## Jira ticket creation → Agent1 board (Phase 6, scaffolded, switched off)
+Scaffolding is in the repo since 2.1.0 and gated by `jira.enabled` in `config/monitors/<team>.json`:
+`references/jira-ticket-template.md` (kind → epic → issue type mapping, dedupe JQL, fields, description shape),
+SKILL.md "Phase 6", `monitor.js validate` checks for the `jira` block. REMEX mapping: bugs (`new after deploy`,
+`pre-existing, grew`, `infra`) → epic REMEX-2957 "Bugs Q3-2026" as `Bug`; `upstream dependency` (a limit on our side must
+change) → epic REMEX-2956 "Tech Improvement Q3-2026" as `Task`; `expected business validation` and `steady noise` → no
+ticket. Labels `agent-one` + `rota-triage`; the REMEX dev board sync rule "REMEX agent-one"
+(`project = REMEX AND labels = agent-one AND statusCategory = "To Do"`) imports the ticket, and the board's
+`board_instructions.md` workflow turns it into a PR.
+
+To switch on: (1) the Agent1 agent needs the Atlassian MCP (already attached to `remex-rota-triage`) and the task
+creator's Atlassian integration linked; (2) run two weeks of posted analyses and confirm the classifications with the
+team; (3) set `jira.enabled: true` via PR; (4) enable the board sync rule (still manual after the pilot) or keep running
+it by hand as the gate. Conventions come from `wkda/a1-platform-claude-code-plugin` → `skills/slack-alert-triage`
+(MX-5119): `[service] Issue name - actual cause` titles, dedupe against open tickets before creating.
 
 ## Deeper code archaeology (removed from Phase 4 for the MVP)
 - Release-tag diff: `git tag --sort=-v:refname`, `git log <prev>..<tag> -- <file>` to say whether the deployed release
