@@ -1,6 +1,6 @@
 {
   "name": "rota-triage",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "description": "Unattended Slack alert triage for AUTO1 teams. Per-team config (config/monitors/<team>.json): channels, user group, team channel. Finds tags, resolves the Kibana link (Discover URL, /app/r/s short link, lz locator), analyses logs with the Kibana agents plus a deterministic search fallback, locates the failing frame in the owning wkda repo, classifies, and posts the analysis in the alert thread and the team channel (optional DMs). Runs as an Agent1 scheduled task or locally. Writes only to Slack (configured targets) and its own ledger.",
   "author": { "name": "REMEX backend team", "email": "team.remex@auto1.com" }
 }

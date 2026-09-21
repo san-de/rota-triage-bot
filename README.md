@@ -5,7 +5,7 @@ REMEX: `@remex-be` in `#bot_rota`), the bot reads the alert thread, resolves the
 failing code in the owning `wkda` repo, classifies the alert and posts the analysis **in the alert thread** and **in the
 team's channel** (optional DMs). It runs on a cron schedule (REMEX: hourly, `poll.cron` in the team config) as an
 **Agent1 scheduled task**, one task per team; each run covers everything since the previous run's watermark, with a
-`poll.sinceFallbackMinutes` overlap for Slack indexing lag (REMEX: 75 min). A run with candidates costs ≈ $5 on Agent1.
+`poll.sinceFallbackMinutes` overlap for Slack indexing lag (REMEX: 75 min). An empty run exits after the Slack search (Phase 1); the agent runs on Sonnet since 2026-09-21. Measured on Opus before that: ≈ $1.9 per empty run, ≈ $2.5–5 with candidates.
 
 ```
 Slack channel ──► Agent1 task (hourly cron, team-owned agent + board)

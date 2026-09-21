@@ -18,7 +18,7 @@ One tagged alert in, one analysis out: **who tagged us, what Kibana says, where 
 
 Everything team-specific comes from `config/monitors/<team>.json` (see `config/monitors/_example.json`). `${CLAUDE_PLUGIN_ROOT}` below is this plugin's directory; on Agent1 the task description names it (the repo clone's `plugins/rota-triage`).
 
-Bundled helpers (Node, dependency-free): `scripts/monitor.js` (config + runtime facts), `scripts/ledger.js` (state), `scripts/slack-scan.js` (which hits are real tags), `scripts/kibana-url.js`, `scripts/lz-decode.js`, `scripts/kibana-shorturl.js` (link shapes → window/filters), `scripts/kibana-search.js` (deterministic log lookup). References: `references/kibana-links.md`, `references/analysis-questions.md`, `references/thread-reply-template.md`, `references/team-channel-template.md`, `references/dm-template.md`.
+Bundled helpers (Node, dependency-free): `scripts/monitor.js` (config + runtime facts), `scripts/ledger.js` (state), `scripts/slack-scan.js` (which hits are real tags), `scripts/kibana-url.js`, `scripts/lz-decode.js`, `scripts/kibana-shorturl.js` (link shapes → window/filters), `scripts/kibana-search.js` (deterministic log lookup). References (**read lazily** — each one only when its phase runs for a real candidate, never in Phase 0 or 1): `references/kibana-links.md`, `references/analysis-questions.md`, `references/thread-reply-template.md`, `references/team-channel-template.md`, `references/dm-template.md`.
 
 ## Hard rules
 
@@ -33,12 +33,23 @@ Bundled helpers (Node, dependency-free): `scripts/monitor.js` (config + runtime 
 9. **Unattended-safe.** Never ask a question mid-run. Degrade, record under *Gaps*, continue. Resolve MCP tools by **name suffix** (`slack_send_message`, `ask_app_debugging`, preferring the `-prod` Kibana server); the `mcp__<server>__` prefix differs between hosts.
 10. **Time budget.** Stop starting new candidates 45 minutes after the run began; unprocessed ones stay for the next run because the watermark only advances past processed candidates.
 
-## Phase 0 — Config, runtime, ledger, preflight
+## Run order and early exit
+
+Most scheduled runs find nothing. Spend nothing before you know:
+
+1. **Phase 0 does only what Phase 1 needs**: parse args, `monitor.js resolve`, `ledger.js init`, confirm the Slack search and send tools exist. Do not read any `references/*.md`, do not touch Kibana or GitHub, do not run any other preflight.
+2. **Phase 1** runs the Slack search and `slack-scan.js`.
+3. **Zero candidates → the run ends in Phase 1 step 5**: advance the watermark, `ledger.js run-note`, the memory line, the terminal summary, then `complete_step_and_advance`. Nothing else is read or called. This is the expected outcome most hours.
+4. **Candidates exist → Phase 1b** (Kibana and GitHub preflight), then Phases 2–5 per candidate, reading each reference file the first time its phase needs it.
+
+On Agent1 read the run memory with `tail -n 20 /app/task-context/memory.md`, never the whole file.
+
+## Phase 0 — Config, runtime, ledger, Slack preflight
 
 1. Parse args: `poll` (default) | `<permalink>` (`…/archives/<CHANNEL>/p<digits>[?thread_ts=…]` → ts = digits with a `.` before the last 6) | `--since <Nd|Nh>`; flags `--monitor <team>` (required unless exactly one enabled monitor exists), `--dry-run`, `--max <n>`.
 2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/monitor.js" resolve --monitor <team>` → keep the JSON as **MON** for the whole run: channels, `derived.matchTokens`, output targets, kibana env, `mode` (`agent1`|`local`), `ledgerPath`, `overlayPath`, `servicesPath`, `elasticKey.source` (`env`|`file`|`none` — the value is never shown).
 3. `node "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.js" init --monitor <team>` (creates the v2 ledger, migrates a legacy single-team ledger once). Note `watermarkTs`.
-4. Preflight table, printed once: Slack search + Slack send (**hard** — stop the run with a clear message if missing), Kibana agent tool (soft), Kibana key for scripts (soft), GitHub access (soft). Print the run start time.
+4. Slack preflight only: the search tool and the send tool must exist (**hard** — stop the run with a one-line reason if either is missing). Print the run start time. Kibana and GitHub are checked in Phase 1b, only when there is something to analyse.
 
 ## Phase 1 — Find new tagged messages (deterministic)
 
@@ -48,18 +59,22 @@ Search is the primary source because **`conversations.history` never returns thr
 2. For each `slack.channels[i]` × `slack.searchTerms[j]`: `slack_search_public_and_private query="in:#<name> <term>" after=<effectiveStart> include_bots=true sort=timestamp sort_dir=asc include_context=false limit=20`, follow `cursor` until exhausted. **Hits from the `sre` bot come back with empty text** — for every hit call `slack_read_thread channel_id=<id> message_ts=<thread_ts or ts>` (detailed) and collect the thread messages.
 3. `slack_read_channel <id> oldest=<effectiveStart>` (concise) for tagged **parent** messages that search has not indexed yet.
 4. Write the material to a temp file `{ hits:[{ts, threadTs, channelId, text, user, permalink}], threads:{threadTs:[{ts,text,user}]} }` and run `node "${CLAUDE_PLUGIN_ROOT}/scripts/slack-scan.js" --monitor <team> --file <tmp>`. It applies, in order: match token present · not only an ignored user group · not already handled or replied (ledger `repliedThreads`, or a thread message starting with `output.signature`) · not stale (`skip.olderThanHours`) · alert-like (`[SRE00xx]` or a Kibana link in the thread, unless `skip.nonAlertMentions` is false) · not an excluded alert code · capped at `poll.maxPerRun` (or `--max`), oldest first. Use its `candidates` list as-is; record every `skipped` entry with `ledger.js mark <ts> --json '{"status":"skipped","reason":"…"}'`.
-5. No candidates in poll mode: print `no new tags for <team> since <watermark local>` and `ledger.js advance <now − poll.searchLagMinutes>` (never to `now` — search indexing lags).
+5. **No candidates in poll mode → the run ends here.** Print `no new tags for <team> since <watermark local>`, `ledger.js advance <now − poll.searchLagMinutes>` (never to `now` — search indexing lags), then `ledger.js run-note --monitor <team> --json '{"candidates":0,"posted":0,"teamOnly":0,"skipped":<n>,"failed":0,"durationSec":s,"gaps":""}'` (health-line rule as in Phase 5 step 7), the memory line, the terminal summary (`watermark <ts> (<local time>) · ledger <path>`) and `complete_step_and_advance`. Do not read any reference file, do not call Kibana or GitHub, do not run Phase 1b.
+
+### Phase 1b — Analysis preflight (only when candidates exist)
+
+Printed once: Kibana agent tool present (soft), Kibana key for the scripts via `MON.elasticKey.source` (soft), GitHub access (soft: `gh auth status`, else GitHub MCP tools present, else the clone rung). A missing item becomes a *Gaps* entry in every reply of this run, never a stop.
 
 ## Phase 2 — Build the AlertContext for each candidate
 
 1. From the thread (already fetched): **parent** (Kibana Alerts app): alert code `SRE00xx`, title, `Account`, `Detected for: *<service.name>*`, `Error id: *<hex>*`, the `:evil_kibana:` link. **`sre` reply**: `:jenkins: Last deployment …` (age, job URL, release tag, deployer), `:jira: SI-…`, the full Discover URL, Grafana, App Cockpit. **Humans**: pasted stack traces (keep the first `wkda.`/`com.auto1.` frame), conclusions, further links. **The tagged message**: author, permalink, its own Kibana link(s), the ask.
-2. **Kibana links** — the tagged message's own link first, then the `sre` reply, then the parent. Resolve per `references/kibana-links.md` with the scripts, never by eyeballing rison: `node scripts/kibana-url.js '<discover url>' '<message time ISO>'`; `node scripts/lz-decode.js '<locator url>'`; `node scripts/kibana-shorturl.js '<short url>' --env <kibana.env>` (its `embeddedUrl` is then fed to `kibana-url.js`). No window from any link → `[message_time − kibana.fallbackWindowMinutes, message_time + fallbackWindowMinutes]`; cap at `kibana.maxWindowHours` around the alert time.
+2. **Kibana links** — the tagged message's own link first, then the `sre` reply, then the parent. Read `references/kibana-links.md` now (first candidate only) and resolve per that file with the scripts, never by eyeballing rison: `node scripts/kibana-url.js '<discover url>' '<message time ISO>'`; `node scripts/lz-decode.js '<locator url>'`; `node scripts/kibana-shorturl.js '<short url>' --env <kibana.env>` (its `embeddedUrl` is then fed to `kibana-url.js`). No window from any link → `[message_time − kibana.fallbackWindowMinutes, message_time + fallbackWindowMinutes]`; cap at `kibana.maxWindowHours` around the alert time.
 3. Fix `from_utc`/`to_utc` once (ISO-8601 Z) and their Europe/Berlin rendering; reuse verbatim in every question.
 4. Service → repo: `config/services.json` merged with the overlay at `overlayPath` (overlay wins): exact key, then key without `-service`. Missing → Phase 4 discovers it and appends to the overlay. `knownIssues`/`knownNoise` on the entry: a matching `error.id` or exception means "already understood" — say so in the reply.
 
 ## Phase 3 — Kibana analysis (skip gracefully when tools are absent)
 
-Follow `references/analysis-questions.md`: one App-Debugging conversation per alert, Q1 → Q3 in order, Q4 (Performance tool) only when the thread or signature mentions timeouts, latency, DB, pools or 5xx. Pin the absolute UTC window, `service.name`, and `error.id`/`trace.id` when known. Attachment-only answers → re-ask with `Answer as INLINE PLAIN TEXT, one line per row`. Two tool errors → stop asking, `Gaps: Kibana unavailable (<class>)`. Windows older than 10 days → do not ask Q1–Q3 (retention); use the thread's pasted trace as the signature and Q5 for presence; `Gaps: window outside 10-day retention`.
+Read `references/analysis-questions.md` now (first candidate only) and follow it: one App-Debugging conversation per alert, Q1 → Q3 in order, Q4 (Performance tool) only when the thread or signature mentions timeouts, latency, DB, pools or 5xx. Pin the absolute UTC window, `service.name`, and `error.id`/`trace.id` when known. Attachment-only answers → re-ask with `Answer as INLINE PLAIN TEXT, one line per row`. Two tool errors → stop asking, `Gaps: Kibana unavailable (<class>)`. Windows older than 10 days → do not ask Q1–Q3 (retention); use the thread's pasted trace as the signature and Q5 for presence; `Gaps: window outside 10-day retention`.
 
 ### Phase 3b — Deterministic lookup (always run, not only as a fallback)
 
@@ -86,7 +101,7 @@ Goal: the failing frame's `file:line`, the last commit touching it, and the conf
 
 For each candidate, oldest first:
 
-1. Render `references/thread-reply-template.md` (first line = `output.signature`); if longer than `output.maxChars`, trim *Evidence*, then *Where*. Render `references/team-channel-template.md` (needs the reply permalink → step 3). Render `references/dm-template.md` only when `output.dmUserIds` is non-empty.
+1. Read the templates now (once per run, first candidate only): `references/thread-reply-template.md`, `references/team-channel-template.md`, and `references/dm-template.md` only when `output.dmUserIds` is non-empty. Render the thread reply (first line = `output.signature`); if longer than `output.maxChars`, trim *Evidence*, then *Where*. Render the team post (needs the reply permalink → step 3) and, if configured, the DM.
 2. **Dry run** (`--dry-run` or `output.dryRun`): print both renderings in fenced blocks, `ledger.js mark <ts> --json '{"status":"dry-run","threadTs":"…","service":"…","alert":"…","classification":"…"}'`, do **not** advance the watermark, continue.
 3. `output.threadReply` → `slack_send_message channel_id=<alert channel id> thread_ts=<threadTs> message=<reply>` (raw channel id, no `#name`). Success → immediately `ledger.js mark <ts> --json '{"status":"posted","threadTs":"…","threadReplyTs":"<message_ts>","channelId":"…","service":"…","alert":"…","classification":"…","permalink":"…"}'`. Failure → retry once; still failing → **team-only** mode: the team post carries the full reply body with the `⚠ could not reply in thread (<reason>)` line, status `team-only`.
 4. Team post → `slack_send_message channel_id=<output.teamChannelId> message=<team post>`; `ledger.js mark <ts> --json '{"teamPostTs":"<message_ts>"}'` (or `{"teamPostTs":null,"reason":"…"}` on failure — keep the thread reply).

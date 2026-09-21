@@ -17,7 +17,7 @@ agent1.prod.apps.auto1.team with `fetch('/api/…', {credentials:'include'})` (t
 Worker facts learned: no `gh` (the GitHub MCP rung is used), Kibana key file at `/home/node/.config/auto1-kibana/keys.json`
 (written from Integrations → Elastic API Key), the Kibana App-Debugging agent tool stays paused until the key owner runs
 `/kibana:setup` once in an Agent1 session with the kibana plugin, the repo must be reachable by the worker's GitHub
-credential proxy (public or in `wkda`), and a run with candidates costs ≈ $5 and takes ≈ 12 min.
+credential proxy (public or in `wkda`). Cost baseline: on Opus (until 2026-09-21) 86 dry runs averaged $2.08, $1.9 for an empty 3–5 min run and up to $5.18 for a 12 min run with candidates. Since 2026-09-21 the agent model is `sonnet` and the skill exits after Phase 1 when nothing is tagged (plugin 2.2.0); re-measure after a day.
 
 Go-live (done 2026-09-21): the live task was created from the dry-run task's description with `--dry-run` removed, scheduled hourly, and the dry-run task was paused. The live task starts with an empty `/app/task-context`, so its first run looks back `firstRunLookbackHours` (1 h) plus the 75-min overlap; the signature-line replied-guard prevents double posts. Without `AGENT1_API_KEY` in the shell the same calls were made from a logged-in browser tab (`fetch('/api/tasks', {credentials:'include'})`).
 
