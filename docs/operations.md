@@ -9,16 +9,17 @@ agent1.prod.apps.auto1.team with `fetch('/api/…', {credentials:'include'})` (t
 | Object | Id |
 |---|---|
 | Agent `remex-rota-triage` (private; github + atlassian + slack MCP, kibana plugin, opus) | `bba04586-6738-43fd-accf-63d49265be29` |
-| Scheduled task `rota-triage · remex (hourly, dry-run)`, cron `0 * * * *` Europe/Berlin, `--dry-run` | `0fdff578-79fa-4c0f-9a6b-be218d781d4b` |
+| **Live** scheduled task `rota-triage · remex`, cron `0 * * * *` Europe/Berlin, no `--dry-run` (created 2026-09-21, first run 11:00Z) | `b776259b-049b-4692-ba15-e7fa61e42df4` |
+| Dry-run scheduled task `rota-triage · remex (hourly, dry-run)` — **paused** 2026-09-21 after 88 runs; keep as reference, re-enable only to rehearse | `0fdff578-79fa-4c0f-9a6b-be218d781d4b` |
 | One-off dry-run tasks (`--since 3d --dry-run`) | `94337fc5-…`, `44ca2668-…` (awaiting review, keep as reference) |
-| REMEX dev board (task moves there once the agent is public) | `7c0842d9-8a01-4e69-a046-70d46a43a2a2` |
+| REMEX dev board (tasks cannot move there yet: Agent1 rejects a board task on a private agent — "Board tasks can only use public or system agents"; make the agent public first) | `7c0842d9-8a01-4e69-a046-70d46a43a2a2` |
 
 Worker facts learned: no `gh` (the GitHub MCP rung is used), Kibana key file at `/home/node/.config/auto1-kibana/keys.json`
 (written from Integrations → Elastic API Key), the Kibana App-Debugging agent tool stays paused until the key owner runs
 `/kibana:setup` once in an Agent1 session with the kibana plugin, the repo must be reachable by the worker's GitHub
 credential proxy (public or in `wkda`), and a run with candidates costs ≈ $5 and takes ≈ 12 min.
 
-Go-live = create a second task without `--dry-run` (same description otherwise), schedule it, then `disable` the dry-run task.
+Go-live (done 2026-09-21): the live task was created from the dry-run task's description with `--dry-run` removed, scheduled hourly, and the dry-run task was paused. The live task starts with an empty `/app/task-context`, so its first run looks back `firstRunLookbackHours` (1 h) plus the 75-min overlap; the signature-line replied-guard prevents double posts. Without `AGENT1_API_KEY` in the shell the same calls were made from a logged-in browser tab (`fetch('/api/tasks', {credentials:'include'})`).
 
 ## See what the bot did
 
